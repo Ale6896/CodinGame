@@ -1,0 +1,14 @@
+name: C Tests
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run tests
+        run: |
+          gcc easy/power_of_thor.c -o thor
+          ./thor < easy/tests/input1.txt > output.txt
+          diff output.txt easy/tests/output1.txt
