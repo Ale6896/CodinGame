@@ -57,6 +57,7 @@ Output:
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include "../../C/Unity/src/unity.h"
 
 struct Number {
     char sign;
@@ -119,10 +120,68 @@ void destroyQueue(struct Number** list) {
     *list = NULL;  // now the caller’s list pointer is safely cleared
 }
 
+
+void transform_expression(const char *input, char *output) {
+    int count_2 = 0;
+    int value;
+    char op;
+    const char *ptr = input;
+    char buffer[256] = "";
+
+    sscanf(ptr, "%d", &value);
+    sprintf(buffer + strlen(buffer), "ADD cgx %d\n", value);
+    ptr = strchr(ptr, ' ') + 1;
+
+    while (sscanf(ptr, "%c %d", &op, &value) == 2) {
+        if (op == '+' && value == 2) {
+            count_2++;
+        } else {
+            if (count_2 > 0) {
+                sprintf(buffer + strlen(buffer), "REPEAT %d\nADD cgx 2\n", count_2);
+                count_2 = 0;
+            }
+            if (op == '+') {
+                sprintf(buffer + strlen(buffer), "ADD cgx %d\n", value);
+            } else if (op == '-') {
+                sprintf(buffer + strlen(buffer), "SUB cgx %d\n", value);
+            }
+        }
+        ptr = strchr(ptr, ' ') + 1;
+    }
+
+    if (count_2 > 0) {
+        sprintf(buffer + strlen(buffer), "REPEAT %d\nADD cgx 2\n", count_2);
+    }
+
+    strcat(buffer, "EXIT\n");
+    strcpy(output, buffer);
+}
+
+void test(void) {
+    const char *input = "1 + 2 + 2 + 2 + 2 - 3";
+    char output[256];
+    const char *expected =
+        "ADD cgx 1\n"
+        "REPEAT 4\n"
+        "ADD cgx 2\n"
+        "SUB cgx 3\n"
+        "EXIT\n";
+
+    transform_expression(input, output);
+    TEST_ASSERT_EQUAL_STRING(expected, output);
+}
+
 int main()
 {
     char expression[1025] = "";
-    scanf("%[^\n]", expression);
+    /* If LOCAL is set use the hardcoded test string; otherwise read from stdin (CodinGame) */
+    if (getenv("LOCAL")) {
+        strcpy(expression, "1 + 2 + 2 + 2 + 2 - 3");
+        /* or read from a local file:
+           FILE *f = fopen("input.txt","r"); ... */
+    } else {
+        scanf("%[^\n]", expression);
+    }
 
     // Write an answer using printf(). DON'T FORGET THE TRAILING \n
     // To debug: fprintf(stderr, "Debug messages...\n");
